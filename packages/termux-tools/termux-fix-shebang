@@ -1,4 +1,4 @@
-#!/bin/sh
+#!@TERMUX_PREFIX@/bin/bash
 
 if [ $# = 0 -o "$1" = "-h" ]; then
 	echo 'usage: termux-fix-shebang <files>'
@@ -8,5 +8,7 @@ if [ $# = 0 -o "$1" = "-h" ]; then
 fi
 
 for file in "$@"; do
-	sed -i -E "1 s@^#\!(.*)/[sx]?bin/(.*)@#\!@TERMUX_PREFIX@/bin/\2@" "$(realpath "${file}")"
+	if head -c 100 "$file" | grep -E "^#\!.*\\/bin\\/.*" | grep -q -E -v "^#\! ?\\/system"; then
+		sed --follow-symlinks -i -E "1 s@^#\!(.*)/bin/(.*)@#\!@TERMUX_PREFIX@/bin/\2@" "$file"
+	fi
 done
