@@ -27,6 +27,7 @@ PACKAGES+=" lua" # Needed to build luarocks package.
 PACKAGES+=" lzip"
 PACKAGES+=" m4"
 PACKAGES+=" openssl"  # Needed to build rust.
+PACKAGES+=" parallel" # Parallel is used in termux_step_massage
 PACKAGES+=" patch"
 PACKAGES+=" pkgconf"
 PACKAGES+=" python"

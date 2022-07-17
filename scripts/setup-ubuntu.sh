@@ -38,6 +38,7 @@ PACKAGES+=" libglib2.0-dev"
 PACKAGES+=" libltdl-dev"
 PACKAGES+=" libtool-bin"
 PACKAGES+=" m4"
+PACKAGES+=" parallel"
 PACKAGES+=" pkg-config"
 PACKAGES+=" scons"
 

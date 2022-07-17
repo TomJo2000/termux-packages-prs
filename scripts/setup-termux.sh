@@ -6,6 +6,7 @@ PACKAGES+=" clang"				# Required for termux-elf-cleaner and C/C++ packages.
 PACKAGES+=" file"				# Used in termux_step_massage().
 PACKAGES+=" gnupg"				# Used in termux_get_repo_files() and build-package.sh.
 PACKAGES+=" lzip"				# Used by tar to extract *.tar.lz source archives.
+PACKAGES+=" parallel"				# Parts of termux_step_massage are run in parallel
 PACKAGES+=" patch"				# Used for applying patches on source code.
 PACKAGES+=" python"				# Used buildorder.py core script.
 PACKAGES+=" unzip"				# Used to extract *.zip source archives.
