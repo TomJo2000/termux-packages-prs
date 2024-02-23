@@ -1,0 +1,20 @@
+diff --git a/plugins/gme/cgme.c b/plugins/gme/cgme.c
+index 6e200745a..8f4ff6393 100644
+--- a/plugins/gme/cgme.c
++++ b/plugins/gme/cgme.c
+@@ -294,11 +294,13 @@ cgme_read (DB_fileinfo_t *_info, char *bytes, int size) {
+ 
+     // FIXME: it makes more sense to call gme_set_fade on init and configchanged
+     if (playForever && info->fade_set) {
+-        gme_set_fade(info->emu, -1, 0);
++        // PATCH: Changed in gme 0.6.4
++        gme_set_fade_msec(info->emu, -1, 0);
+         info->fade_set = 0;
+     }
+     else if (!playForever && !info->fade_set && conf_fadeout > 0 && info->duration >= conf_fadeout && _info->readpos >= info->duration - conf_fadeout) {
+-        gme_set_fade(info->emu, (int)(_info->readpos * 1000), conf_fadeout * 1000);
++        // PATCH: Changed in gme 0.6.4
++        gme_set_fade_msec(info->emu, (int)(_info->readpos * 1000), conf_fadeout * 1000);
+         info->fade_set = 1;
+     }
+ 
