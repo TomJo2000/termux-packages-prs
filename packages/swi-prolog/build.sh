@@ -32,7 +32,7 @@ termux_pkg_auto_update() {
 	local latest_devel='https://www.swi-prolog.org/download/devel/src/swipl-latest.tar.gz'
 	local version=$(curl -s "$latest_devel" \
 	| jq '.location' \
-	| sed 's/.*swipl-\(.*\)\..*/\1/')
+	| sed 's/.*swipl-\(.*\)\.tar.*/\1/')
 termux_pkg_upgrade_version "$version"
 }
 
