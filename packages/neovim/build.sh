@@ -8,7 +8,7 @@ TERMUX_PKG_SRCURL=https://github.com/neovim/neovim/archive/v${TERMUX_PKG_VERSION
 TERMUX_PKG_SHA256=372ea2584b0ea2a5a765844d95206bda9e4a57eaa1a2412a9a0726bab750f828
 TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_UPDATE_VERSION_REGEXP="^\d+\.\d+\.\d+$"
-TERMUX_PKG_DEPENDS="libiconv, libuv, luv, libmsgpack, libandroid-support, libvterm (>= 1:0.3-0), libluajit, libunibilium, libtreesitter"
+TERMUX_PKG_DEPENDS="libiconv, libuv, luv, libmsgpack, libandroid-support, libvterm (>= 1:0.3-0), libluajit, libunibilium, libtreesitter, luarocks"
 TERMUX_PKG_HOSTBUILD=true
 
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
@@ -35,6 +35,11 @@ _patch_luv() {
 	cp -r $1/build/src/lua-compat-5.3/* $1/build/src/luv/deps/lua-compat-5.3/
 	cp -r $1/build/src/luajit/* $1/build/src/luv/deps/luajit/
 	cp -r $1/build/src/libuv/* $1/build/src/luv/deps/libuv/
+}
+
+termux_step_post_get_source() {
+	luarocks install lpeg
+	luarocks install mpack
 }
 
 termux_step_host_build() {
