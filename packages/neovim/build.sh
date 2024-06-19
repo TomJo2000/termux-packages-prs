@@ -61,6 +61,10 @@ termux_step_host_build() {
 	make CMAKE_EXTRA_FLAGS="-DCMAKE_INSTALL_PREFIX=$TERMUX_PKG_HOSTBUILD_DIR -DUSE_BUNDLED_LUAROCKS=ON" install ||
 		(_patch_luv $TERMUX_PKG_SRCDIR/.deps && make CMAKE_EXTRA_FLAGS="-DCMAKE_INSTALL_PREFIX=$TERMUX_PKG_HOSTBUILD_DIR -DUSE_BUNDLED_LUAROCKS=ON" install)
 
+	# Copy away host-built libnlua0.so used by src/nvim/generators/preload.lua.
+	# We patch src/nvim/CMakeLists.txt to use this instead of the cross-compiled one.
+	cp ./build/lib/libnlua0.so $TERMUX_PKG_HOSTBUILD_DIR/
+
 	make distclean
 	rm -Rf build/
 
