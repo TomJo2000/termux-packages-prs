@@ -10,6 +10,7 @@ TERMUX_PKG_RECOMMENDS="fzf"
 TERMUX_PKG_SUGGESTS="peco"
 TERMUX_PKG_BUILD_IN_SRC=true
 TERMUX_PKG_AUTO_UPDATE=true
+TERMUX_PKG_UPDATE_TAG_TYPE=newest-tag
 
 termux_step_post_get_source() {
 	termux_setup_golang
