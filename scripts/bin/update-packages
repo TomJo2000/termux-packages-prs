@@ -288,7 +288,7 @@ _check_updated() {
 	# The call to `termux_pkg_upgrade_version` is delibrately
 	# not wrapped by `quiet` to let warnings on stderr bubble up.
 	if termux_pkg_upgrade_version "${latest_tag}" > /dev/null; then
-		echo "INFO: Skipping ${1##*/}: already at version ${latest_tag}"
+		echo "INFO: Skipping ${1##*/}: already at version ${TERMUX_PKG_VERSION}"
 		: "${_ALREADY_SEEN["${TERMUX_PKG_NAME}"]:=""}"
 		return 0
 	fi
@@ -313,9 +313,9 @@ _run_update() {
 	)"; then
 		_NEWEST_VERSION="$(tail -n1 "$LATEST_VERSION_TEMP_FILE")"
 		: "${_NEWEST_VERSION:="$_CURRENT_VERSION"}"
-		if dpkg --compare-versions "${_CURRENT_VERSION}" lt "${_NEWEST_VERSION}"; then
+		if termux_pkg_is_update_needed "${_CURRENT_VERSION}" "${_NEWEST_VERSION}"; then
 			_ALREADY_SEEN["$pkg_name"]="${pkg_name} ${_CURRENT_VERSION} => ${_NEWEST_VERSION}"
-		elif dpkg --compare-versions "${_CURRENT_VERSION}" gt "${_NEWEST_VERSION}"; then
+		elif termux_pkg_is_update_needed "${_NEWEST_VERSION}" "${_CURRENT_VERSION}"; then
 			_ALREADY_SEEN["$pkg_name"]="${pkg_name} ${_CURRENT_VERSION} => ${_NEWEST_VERSION} (Error? current version is larger than latest fetched version)"
 		else
 			_ALREADY_SEEN["$pkg_name"]=""
@@ -421,7 +421,6 @@ if [[ "$1" == "@all" ]]; then
 		done
 	done
 else
-    PS4='+$0 \[\e[32m\]${FUNCNAME[0]:-<global scope>}${FUNCNAME[*]:+()}:$LINENO\[\e[0m\] '; set -x
 	for pkg in "$@"; do
 		_unix_millis="$(date +%10s%3N)"
 		if [[ ! -d "${pkg}" ]]; then # If only package name is given, try to find it's directory.

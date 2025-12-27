@@ -5,7 +5,7 @@ termux_github_graphql() {
 
 	# Batch size for fetching tags, 100 seems to work consistently.
 	local BATCH BATCH_SIZE=100
-	echo "# vim: ft=graphql" > /tmp/query-12345 # Uncomment for debugging GraphQL queries
+	# echo "# vim: ft=graphql" > /tmp/query-12345 # Uncomment for debugging GraphQL queries
 	for (( BATCH = 0; ${#GITHUB_GRAPHQL_QUERIES[@]} >= BATCH_SIZE * BATCH ; BATCH++ )); do
 
 		echo "Starting batch $BATCH at: ${GITHUB_GRAPHQL_QUERIES[$BATCH * $BATCH_SIZE]//\\/}" >&2
@@ -55,8 +55,8 @@ termux_github_graphql() {
 				'ratelimit: rateLimit { cost limit remaining used resetAt }' \
 				'}' \
 
-		echo "# Batch: $BATCH" >> /tmp/query-12345 # Uncomment for debugging GraphQL queries
-		printf '%s' "${QUERY}"  >> /tmp/query-12345 # Uncomment for debugging GraphQL queries
+		# echo "# Batch: $BATCH" >> /tmp/query-12345 # Uncomment for debugging GraphQL queries
+		# printf '%s' "${QUERY}"  >> /tmp/query-12345 # Uncomment for debugging GraphQL queries
 
 		# We use graphql intensively so we should slowdown our requests to avoid hitting github ratelimits.
 		sleep 5
@@ -88,8 +88,9 @@ termux_github_graphql() {
 			| ($pkgs[$idx] | split("/")[-1]) as $pkgName  # Get package name from bash array
 			| "GIT|\($pkgName)|\($tag)"                   # Print results
 			' <<< "$response")"
-		jq '.' <<< "$response" >> /tmp/query-12345
-		echo "$ret" >> /tmp/query-12345
+		# # Uncomment for debugging GraphQL queries
+		# jq '.' <<< "$response" >> /tmp/query-12345
+		# echo "$ret" >> /tmp/query-12345
 		echo "$ret"
 	done
 }
