@@ -78,8 +78,12 @@ termux_pkg_upgrade_version() {
 	done
 
 	# Report back the fully parsed $LATEST_VERSION for the summary.
-	# Or discard it straight into /dev/null if no tempfile was provided.
-	echo "$LATEST_VERSION" > "${LATEST_VERSION_TEMP_FILE:-/dev/null}"
+	# Provided we were given a fifo to put it.
+	if [[ -p "${IPC_FIFO:-}" && -n "${IPC_FIFO_FD:-}" ]]; then
+		exec {IPC_FIFO_FD}<>"$IPC_FIFO"
+		echo "$LATEST_VERSION # ${TERMUX_PKG_NAME}" >& "${IPC_FIFO_FD}"
+		exec {IPC_FIFO_FD}>&-
+	fi
 
 	if [[ "${SKIP_VERSION_CHECK}" != "--skip-version-check" ]]; then
 		if ! termux_pkg_is_update_needed \

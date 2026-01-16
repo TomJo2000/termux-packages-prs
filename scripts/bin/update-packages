@@ -20,6 +20,8 @@ export TERMUX_PKG_AUTO_UPDATE=false            # Whether to auto-update or not. 
 export TERMUX_PKG_UPDATE_VERSION_REGEXP=""     # Regexp to extract version with `grep -oP`.
 export TERMUX_PKG_UPDATE_VERSION_SED_REGEXP="" # Regexp to extract version with `sed`.
 export TERMUX_REPOLOGY_DATA_FILE
+# Clean up any old repology data files
+rm "${TMPDIR:-/tmp}/termux-repology".* &> /dev/null
 TERMUX_REPOLOGY_DATA_FILE="$(mktemp -t termux-repology.XXXXXX)" # File to store repology data.
 
 export TERMUX_SCRIPTDIR
@@ -301,7 +303,6 @@ _run_update() {
 	pkg_name="$(basename "${pkg_dir}")"
 	# Run each package update in separate process since we include their environment variables.
 	local output="" _CURRENT_VERSION _NEWEST_VERSION
-	: > "$LATEST_VERSION_TEMP_FILE" # flush the sidechannel
 	# shellcheck disable=SC1091 # Ignore shellcheck's inability to follow the source
 	_CURRENT_VERSION="$(set +eu; . "$(realpath "$pkg_dir")/build.sh"; echo "${TERMUX_PKG_VERSION#*:}")"
 
@@ -312,12 +313,14 @@ _run_update() {
 		exec > >(tee /dev/fd/2) 2>&1 # output everything on stderr to stdout as well.
 		_update "${pkg_dir}"
 	)"; then
-		_NEWEST_VERSION="$(< "$LATEST_VERSION_TEMP_FILE")"
-		: "${_NEWEST_VERSION:="$_CURRENT_VERSION"}"
-		if dpkg --compare-versions "${_CURRENT_VERSION}" lt "${_NEWEST_VERSION}"; then
-			_ALREADY_SEEN["$pkg_name"]="${pkg_name} ${_CURRENT_VERSION} => ${_NEWEST_VERSION}"
-		elif dpkg --compare-versions "${_CURRENT_VERSION}" gt "${_NEWEST_VERSION}"; then
-			_ALREADY_SEEN["$pkg_name"]="${pkg_name} ${_CURRENT_VERSION} => ${_NEWEST_VERSION} (Error? current version is larger than latest fetched version)"
+		read -rt0 _NEWEST_VERSION < "$IPC_FIFO"
+		: "${_NEWEST_VERSION:="$_CURRENT_VERSION"}" # If we didn't get a version back treat it as current.
+		local debug_copy="$_NEWEST_VERSION"
+		_NEWEST_VERSION="${_NEWEST_VERSION% #*}" # Remove potential debug comment.
+		if termux_pkg_is_update_needed "${_CURRENT_VERSION}" "${_NEWEST_VERSION}"; then
+			_ALREADY_SEEN["$pkg_name"]="${pkg_name} ${_CURRENT_VERSION} => ${debug_copy}"
+		elif termux_pkg_is_update_needed "${_NEWEST_VERSION}" "${_CURRENT_VERSION}"; then
+			_ALREADY_SEEN["$pkg_name"]="${pkg_name} ${_CURRENT_VERSION} => ${debug_copy} (Error? current version is larger than latest fetched version)"
 		else
 			_ALREADY_SEEN["$pkg_name"]=""
 		fi
@@ -397,10 +400,13 @@ _update_dependencies() {
 echo "INFO: Running update for: $*"
 
 _start_time="$(date +%10s%3N)"
-# Remove any left over temp files that may not have been cleaned up.
-rm "${TMPDIR:-/tmp}"/termux_ipc_*.fifo &> /dev/null
-# Set up a side channel for reporting parsed latest versions
-export LATEST_VERSION_TEMP_FILE="${TMPDIR:-/tmp}/termux_ipc_$$.fifo"
+
+# Remove any leftover FIFOs that may not have been cleaned up.
+rm "${TMPDIR:-/tmp}/termux_ipc_"*.fifo &> /dev/null
+# Set up a side channel FIFO for reporting parsed latest versions
+export IPC_FIFO="${TMPDIR:-/tmp}/termux_ipc_$$.fifo"
+mkfifo "$IPC_FIFO"
+exec {IPC_FIFO_FD}<>"$IPC_FIFO"
 
 if [[ "$1" == "@all" ]]; then
 	declare -a PACKAGE_LIST=()
@@ -440,8 +446,9 @@ for pkg_dir in "$@"; do
 	echo "termux - took $(ms_to_human_readable $(( $(date +%10s%3N) - _unix_millis )))"
 done
 
-# Remove temp file
-rm "${TMPDIR:-/tmp}"/termux_ipc_*.fifo
+exec {IPC_FIFO_FD}<&- # close the FIFO
+# Clean up our FIFO and repology data file
+rm "$IPC_FIFO" "$TERMUX_REPOLOGY_DATA_FILE"
 
 #################################################REPORT CHANGES##################################################
 
@@ -452,7 +459,7 @@ echo ""
 echo "INFO: ${#_FAILED_UPDATES[*]} failed updates."
 echo "${!_FAILED_UPDATES[@]}"
 
-unset LATEST_VERSION_TEMP_FILE _unix_millis _start_time _pkg
+unset IPC_FIFO _unix_millis _start_time _pkg
 
 ################################################FAILURE HANDLING#################################################
 
