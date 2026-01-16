@@ -408,6 +408,9 @@ export IPC_FIFO="${TMPDIR:-/tmp}/termux_ipc_$$.fifo"
 mkfifo "$IPC_FIFO"
 exec {IPC_FIFO_FD}<>"$IPC_FIFO"
 
+# DO NOT MERGE - testing only
+set -- @all
+
 if [[ "$1" == "@all" ]]; then
 	declare -a PACKAGE_LIST=()
 	# To conserve API limits and speed up update checking,
