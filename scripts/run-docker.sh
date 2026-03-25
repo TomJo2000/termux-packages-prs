@@ -1,49 +1,52 @@
 #!/bin/bash
 set -euo pipefail
 
-TERMUX_SCRIPTDIR=$(cd "$(realpath "$(dirname "$0")")"; cd ..; pwd)
-: ${TERMUX_BUILDER_IMAGE_NAME:=ghcr.io/termux/package-builder}
-: ${CONTAINER_NAME:=termux-package-builder}
-: ${TERMUX_DOCKER_RUN_EXTRA_ARGS:=}
-: ${TERMUX_DOCKER_EXEC_EXTRA_ARGS:=}
-BUILDSCRIPT_NAME=build-package.sh
-CONTAINER_HOME_DIR=/home/builder
+TERMUX_SCRIPTDIR="$(cd "$(realpath "$(dirname "$0")")"; cd ..; pwd)"
+: "${TERMUX_BUILDER_IMAGE_NAME:=ghcr.io/termux/package-builder}"
+: "${CONTAINER_NAME:=termux-package-builder}"
+: "${TERMUX_DOCKER_RUN_EXTRA_ARGS:=}"
+: "${TERMUX_DOCKER_EXEC_EXTRA_ARGS:=}"
+BUILDSCRIPT_NAME="build-package.sh"
+CONTAINER_HOME_DIR="/home/builder"
+HOST_BUILD_DIR="$HOME" # Default mountpoint for the ~/.termux-build directory from the container on the host
+HOST_DATA_DIR="/data"  # Default mountpoint for the /data directory from the container on the host
 
 _show_usage() {
-	echo "Usage: $0 [OPTIONS] [COMMAND]"
-	echo ""
-	echo "Run a command in the Termux package builder container. If no command is given, an interactive shell will be started."
-	echo ""
-	echo "Options:"
-	echo "  -h, --help                 Show this help message and exit"
-	echo "  -d, --dry-run              Run 'build-package-dry-run-simulation.sh' before"
-	echo "                             building any package. This is useful for CI to"
-	echo "                             skip unnecessary docker runs."
-	echo "  -m, --mount-termux-dirs    Mount /data and ~/.termux-build into the container."
-	echo "                             This is useful for building locally for development"
-	echo "                             with host IDE and editors."
-	echo "Supported environment variables:"
-	echo "  TERMUX_BUILDER_IMAGE_NAME     The name of the Docker image to use"
-	echo "  CONTAINER_NAME                The name of the Docker container to create/use"
-	echo "  TERMUX_DOCKER_RUN_EXTRA_ARGS  Extra arguments to pass to 'docker run' while"
-	echo "                                creating the container"
-	echo "  TERMUX_DOCKER_EXEC_EXTRA_ARGS Extra arguments to pass to 'docker exec' while"
-	echo "                                running the command in the container"
-	echo "  TERMUX_DOCKER_USE_SUDO        If set to any non-empty value, 'sudo' will be"
-	echo "                                used to run 'docker' commands"
-	echo ""
-	echo ""
-	echo "Kindly note that:"
-	echo "- TERMUX_DOCKER_RUN_EXTRA_ARGS is only considered when creating the container,"
-	echo "  and will not be applied when running the command in the container if the"
-	echo "  container already exists."
-	echo "- To apply new TERMUX_DOCKER_RUN_EXTRA_ARGS, the existing container needs to be"
-	echo "  removed first."
-	echo "- The above rules also apply to -m/--mount-termux-dirs option as it adds the"
-	echo "  mount arguments to TERMUX_DOCKER_RUN_EXTRA_ARGS."
-	echo "- The dry-run option will only work if the first argument passed to this script"
-	echo "  which runs docker contains '$BUILDSCRIPT_NAME', and it will run"
-	echo "  'build-package-dry-run-simulation.sh' with arguments passed to this script."
+	printf '%s\n' \
+		"Usage: $0 [OPTIONS] [COMMAND]" \
+		"" \
+		"Run a command in the Termux package builder container. If no command is given, an interactive shell will be started." \
+		"" \
+		"Options:" \
+		"  -h, --help                 Show this help message and exit" \
+		"  -d, --dry-run              Run 'build-package-dry-run-simulation.sh' before" \
+		"                             building any package. This is useful for CI to" \
+		"                             skip unnecessary docker runs." \
+		"  -m, --mount-termux-dirs    Mount /data and ~/.termux-build into the container." \
+		"                             This is useful for building locally for development" \
+		"                             with host IDE and editors." \
+		"Supported environment variables:" \
+		"  TERMUX_BUILDER_IMAGE_NAME     The name of the Docker image to use" \
+		"  CONTAINER_NAME                The name of the Docker container to create/use" \
+		"  TERMUX_DOCKER_RUN_EXTRA_ARGS  Extra arguments to pass to 'docker run' while" \
+		"                                creating the container" \
+		"  TERMUX_DOCKER_EXEC_EXTRA_ARGS Extra arguments to pass to 'docker exec' while" \
+		"                                running the command in the container" \
+		"  TERMUX_DOCKER_USE_SUDO        If set to any non-empty value, 'sudo' will be" \
+		"                                used to run 'docker' commands" \
+		"" \
+		"" \
+		"Kindly note that:" \
+		"- TERMUX_DOCKER_RUN_EXTRA_ARGS is only considered when creating the container," \
+		"  and will not be applied when running the command in the container if the" \
+		"  container already exists." \
+		"- To apply new TERMUX_DOCKER_RUN_EXTRA_ARGS, the existing container needs to be" \
+		"  removed first." \
+		"- The above rules also apply to -m/--mount-termux-dirs option as it adds the" \
+		"  mount arguments to TERMUX_DOCKER_RUN_EXTRA_ARGS." \
+		"- The dry-run option will only work if the first argument passed to this script" \
+		"  which runs docker contains '$BUILDSCRIPT_NAME', and it will run" \
+		"  'build-package-dry-run-simulation.sh' with arguments passed to this script."
 	exit 0
 }
 
@@ -51,15 +54,41 @@ dry_run="false"
 
 while (( $# != 0 )); do
 	case "$1" in
-		-h|--help) shift 1; _show_usage;;
+		-h|--help)
+			shift 1
+			_show_usage
+		;;
 		-d|--dry-run)
 			dry_run="true"
-			shift 1;;
-		-m|--mount-termux-dirs)
-			TERMUX_DOCKER_RUN_EXTRA_ARGS="--volume /data:/data --volume $HOME/.termux-build:$CONTAINER_HOME_DIR/.termux-build $TERMUX_DOCKER_RUN_EXTRA_ARGS"
-			shift 1;;
-		--) shift 1; break;;
-		-*) echo "Error: Unknown option '$1'" 1>&2; shift 1; exit 1;;
+			shift 1
+		;;
+		-mb|--mount-build-dir)
+			shift 1
+			if [[ -n "$1" && "$1" != -* ]]; then
+				[[ -d "$1" ]] || :
+				HOST_BUILD_DIR="$(realpath "$1")"
+				shift 1
+			fi
+			TERMUX_DOCKER_RUN_EXTRA_ARGS+="--volume $(realpath "${HOST_BUILD_DIR}")/.termux-build:$CONTAINER_HOME_DIR/.termux-build"
+		;;
+		-md|--mount-data-dir)
+			shift 1
+			if [[ -n "$1" && "$1" != -* ]]; then
+				[[ -d "$1" ]] || :
+				HOST_DATA_DIR="$(realpath "$1")"
+				shift 1
+			fi
+			TERMUX_DOCKER_RUN_EXTRA_ARGS+="--volume $(realpath "${HOST_DATA_DIR}"):/data"
+		;;
+		--)
+			shift 1
+			break
+		;;
+		-*)
+			echo "Error: Unknown option '$1'" 1>&2
+			shift 1
+			exit 1
+		;;
 		*) break;;
 	esac
 done
