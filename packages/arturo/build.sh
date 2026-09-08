@@ -10,10 +10,10 @@ TERMUX_PKG_EXCLUDED_ARCHES="arm, i686"
 TERMUX_PKG_BUILD_IN_SRC=true
 
 termux_step_pre_configure() {
-	declare arch=${TERMUX_ARCH}
+	declare arch="${TERMUX_ARCH}"
 	case "${arch}" in
-	aarch64) arch=arm64 ;;
-	x86_64)  arch=amd64 ;;
+		aarch64) arch=arm64;;
+		x86_64)  arch=amd64;;
 	esac
 	cat <<-EOF >nim.cfg
 		--os:android
@@ -32,12 +32,8 @@ termux_step_pre_configure() {
 	EOF
 }
 
-termux_step_configure() {
-	curl https://nim-lang.org/choosenim/init.sh -sSf | bash -s -- -y
-	export PATH="$HOME/.nimble/bin:$PATH"
-}
-
 termux_step_make() {
+	termux_setup_nim
 	nim build.nims build --mode full --log --release
 }
 
